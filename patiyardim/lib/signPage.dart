@@ -439,8 +439,7 @@ class BottomSheet extends StatelessWidget {
     if (response.statusCode == 200) {
       var jsonString = await response.stream.bytesToString();
       Map<String, dynamic> userJson = jsonDecode(jsonString);
-      var user = User.fromJson(userJson);
-      var userId = user.id;
+      var userId = userJson['id'];
       return true;
     } else {
       return false;
