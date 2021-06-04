@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:patiyardim/models/user.dart';
 import 'clipper.dart';
 import 'main.dart';
+import 'package:http/http.dart' as http;
 
 class Home extends StatefulWidget {
   @override
@@ -8,9 +12,9 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  TextEditingController _emailController,
-      _passwordController,
-      _nameController = TextEditingController();
+  TextEditingController _emailController = TextEditingController();
+  TextEditingController _passwordController = TextEditingController();
+  TextEditingController _nameController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -113,14 +117,14 @@ class _HomeState extends State<Home> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   CustomButton(
-                    label: "GIRIS",
+                    label: "Giriş Yap",
                     primaryColor: Colors.white,
                     secondaryColor: Theme.of(context).primaryColor,
                     onPressed: () => _loginSheet(context),
                   ),
                   SizedBox(height: 20),
                   CustomButton(
-                    label: "GİRİŞ YAP",
+                    label: "Kayıt Ol",
                     primaryColor: Theme.of(context).primaryColor,
                     secondaryColor: Colors.white,
                     onPressed: () => _registerSheet(context),
@@ -358,7 +362,7 @@ class BottomSheet extends StatelessWidget {
                             ),
                             ..._nameController != null
                                 ? _registerLogo
-                                : _loginLogo
+                                : _loginLogo,
                           ],
                         ),
                       ),
@@ -384,13 +388,31 @@ class BottomSheet extends StatelessWidget {
                       ),
                       SizedBox(height: 20),
                       CustomButton(
-                        label: "KAYDOL",
+                        label: _nameController != null ? "KAYDOL" : "GİRİŞ YAP",
                         primaryColor: Theme.of(context).primaryColor,
                         secondaryColor: Colors.white,
-                        onPressed: () => Navigator.pushReplacement(
-                            context,
-                            new MaterialPageRoute(
-                                builder: (context) => new MyHomePage())),
+                        onPressed: () async => {
+                          await login(_emailController?.text ?? "",
+                                  _passwordController?.text ?? "")
+                              .then((value) => {
+                                    if (!!value)
+                                      {
+                                        Navigator.pushReplacement(
+                                            context,
+                                            new MaterialPageRoute(
+                                                builder: (context) =>
+                                                    new MyHomePage(
+                                                        title: 'Pati Yardım'))),
+                                      }
+                                    else
+                                      {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                          content: Text("Login failed"),
+                                        ))
+                                      }
+                                  }),
+                        },
                       ),
                       SizedBox(height: 20),
                     ],
@@ -405,5 +427,23 @@ class BottomSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<bool> login(String username, String password) async {
+    var headers = {'Content-Type': 'application/json'};
+    var request = http.Request(
+        'POST', Uri.parse('https://localhost:5001/api/users/login'));
+    request.body = json.encode({"Mail": username, "Password": password});
+    request.headers.addAll(headers);
+    http.StreamedResponse response = await request.send();
+    if (response.statusCode == 200) {
+      var jsonString = await response.stream.bytesToString();
+      Map<String, dynamic> userJson = jsonDecode(jsonString);
+      var user = User.fromJson(userJson);
+      var userId = user.id;
+      return true;
+    } else {
+      return false;
+    }
   }
 }
